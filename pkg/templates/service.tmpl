@@ -1,0 +1,39 @@
+package services
+
+import (
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
+    "{{.BaseModuleName}}/modules/repository"
+    "{{.BaseModuleName}}/modules/models"
+)
+
+type {{.ResourceName}}Service struct {
+    Repo *repository.Repository
+}
+
+func New{{.ResourceName}}Service(repo *repository.Repository) *{{.ResourceName}}Service {
+    return &{{.ResourceName}}Service{Repo: repo}
+}
+
+func (s *{{.ResourceName}}Service) Create{{.ResourceName}}({{.ResourceNameLower}} *models.{{.ResourceName}}) (interface{}, error) {
+    return s.Repo.Create("{{.ResourceNameLower}}s", {{.ResourceNameLower}})
+}
+
+func (s *{{.ResourceName}}Service) GetAll{{.ResourceName}}s() ([]bson.M, error) {
+    return s.Repo.FindAll("{{.ResourceNameLower}}s", bson.M{})
+}
+
+func (s *{{.ResourceName}}Service) Get{{.ResourceName}}ByID(id string) (interface{}, error) {
+    objectID, _ := primitive.ObjectIDFromHex(id)
+    return s.Repo.FindOne("{{.ResourceNameLower}}s", bson.M{"_id": objectID})
+}
+
+func (s *{{.ResourceName}}Service) Update{{.ResourceName}}(id string, update bson.M) error {
+    objectID, _ := primitive.ObjectIDFromHex(id)
+    return s.Repo.Update("{{.ResourceNameLower}}s", bson.M{"_id": objectID}, update)
+}
+
+func (s *{{.ResourceName}}Service) Delete{{.ResourceName}}(id string) error {
+    objectID, _ := primitive.ObjectIDFromHex(id)
+    return s.Repo.Delete("{{.ResourceNameLower}}s", bson.M{"_id": objectID})
+}

@@ -1,0 +1,19 @@
+package routes
+
+import (
+    "github.com/gofiber/fiber/v2"
+    "{{.BaseModuleName}}/modules/controllers"
+    "{{.BaseModuleName}}/modules/repository"
+    "{{.BaseModuleName}}/modules/services"
+)
+
+func Setup{{.ResourceName}}Routes(app *fiber.App, repo *repository.Repository) {
+    service := services.New{{.ResourceName}}Service(repo)
+    controller := controllers.New{{.ResourceName}}Controller(service)
+
+    app.Get("/{{.ResourceNameLower}}s", controller.GetAll)
+    app.Get("/{{.ResourceNameLower}}s/:id", controller.GetOne)
+    app.Post("/{{.ResourceNameLower}}s", controller.Create)
+    app.Put("/{{.ResourceNameLower}}s/:id", controller.Update)
+    app.Delete("/{{.ResourceNameLower}}s/:id", controller.Delete)
+}
