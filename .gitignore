@@ -2,10 +2,11 @@
 *
 
 # Allow the compiled binary (Replace 'mybinary' with your actual binary name)
-!crud
+!go-fiber-mongo-crud
 
 # Allow .gitignore itself so it remains in the repository
-!.gitignore
+.gitignore
+!README.md
 
 # If using Go modules, you may want to allow go.mod and go.sum
 # !go.mod
