@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -12,7 +16,11 @@ import (
 var (
 	resourceName string
 )
+
 var rootPath string = "src/modules/"
+
+//go:embed templates/*.tmpl
+var templates embed.FS
 
 func init() {
 	generateCmd.Flags().StringVarP(&resourceName, "name", "n", "", "Name of the resource (required)")
@@ -55,29 +63,51 @@ var generateCmd = &cobra.Command{
 	},
 }
 
+// var initCmd = &cobra.Command{
+// 	Use:   "init",
+// 	Short: "Initialize a simple Fiber app with MongoDB connection",
+// 	Run: func(cmd *cobra.Command, args []string) {
+// 		// Create the src directory
+// 		if err := os.MkdirAll("", os.ModePerm); err != nil {
+// 			fmt.Println("Error creating src directory:", err)
+// 			return
+// 		}
+
+// 		// Create the main.go file
+// 		if err := createMainGo(); err != nil {
+// 			fmt.Println("Error creating main.go:", err)
+// 			return
+// 		}
+
+// 		fmt.Println("Simple Fiber app with MongoDB connection created successfully!")
+// 	},
+// }
+
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a simple Fiber app with MongoDB connection",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Create the src directory
-		if err := os.MkdirAll("src", os.ModePerm); err != nil {
-			fmt.Println("Error creating src directory:", err)
+		// Get the current working directory
+		currentDir, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Error getting current directory:", err)
 			return
 		}
 
-		// Create the main.go file
-		if err := createMainGo(); err != nil {
+		// Create the main.go file directly in the current directory
+		if err := createMainGo(currentDir); err != nil {
 			fmt.Println("Error creating main.go:", err)
 			return
 		}
 
-		fmt.Println("Simple Fiber app with MongoDB connection created successfully!")
+		fmt.Println("Simple Fiber app with MongoDB connection created successfully in the current directory!")
 	},
 }
 
-func createMainGo() error {
-	mainGoPath := "src/main.go" // Path to your main.go file
-
+func createMainGo(currentDir string) error {
+	// Define the path to the main.go file in the current directory
+	mainGoPath := filepath.Join(currentDir, "main.go")
+	fmt.Println("mainGoPath",mainGoPath)
 	// Default main.go template
 	defaultMainGo := `package main
 
@@ -124,12 +154,24 @@ func main() {
 }
 
 func getModuleName() string {
-	// Replace with your actual module name or logic to fetch it
-	return "github.com/hafizul16103123/go-fiber-crud-generator"
-}
+	// Run 'go list -m' to get the module name
+	cmd := exec.Command("go", "list", "-m")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		// If an error occurs, return an empty string or a default value
+		fmt.Println("Error fetching module name:", err)
+		return ""
+	}
 
+	// Clean the output by trimming any surrounding whitespace or newlines
+	moduleName := strings.TrimSpace(out.String())
+	fmt.Println("moduleName: ",moduleName)
+	// Return the module name
+	return moduleName
+}
 func generateModel() {
-	tmpl := template.Must(template.ParseFiles("pkg/templates/model.tmpl"))
+	tmpl := template.Must(template.ParseFS(templates, "templates/model.tmpl"))
 	file, _ := os.Create(fmt.Sprintf(rootPath+"models/%s.go", strings.ToLower(resourceName)))
 	defer file.Close()
 
@@ -139,7 +181,7 @@ func generateModel() {
 }
 
 func generateRepository() {
-	tmpl := template.Must(template.ParseFiles("pkg/templates/repository.tmpl"))
+	tmpl := template.Must(template.ParseFS(templates, "templates/repository.tmpl"))
 	file, _ := os.Create(rootPath + "repository/repository.go")
 	defer file.Close()
 
@@ -147,7 +189,7 @@ func generateRepository() {
 }
 
 func generateService() {
-	tmpl := template.Must(template.ParseFiles("pkg/templates/service.tmpl"))
+	tmpl := template.Must(template.ParseFS(templates, "templates/service.tmpl"))
 	file, _ := os.Create(fmt.Sprintf(rootPath+"services/%s_service.go", strings.ToLower(resourceName)))
 	defer file.Close()
 
@@ -159,7 +201,7 @@ func generateService() {
 }
 
 func generateController() {
-	tmpl := template.Must(template.ParseFiles("pkg/templates/controller.tmpl"))
+	tmpl := template.Must(template.ParseFS(templates, "templates/controller.tmpl"))
 	file, _ := os.Create(fmt.Sprintf(rootPath+"controllers/%s_controller.go", strings.ToLower(resourceName)))
 	defer file.Close()
 
@@ -171,7 +213,7 @@ func generateController() {
 }
 
 func generateRoutes() {
-	tmpl := template.Must(template.ParseFiles("pkg/templates/routes.tmpl"))
+	tmpl := template.Must(template.ParseFS(templates, "templates/routes.tmpl"))
 	file, _ := os.Create(fmt.Sprintf(rootPath+"routes/%s_routes.go", strings.ToLower(resourceName)))
 	defer file.Close()
 
@@ -184,7 +226,11 @@ func generateRoutes() {
 
 // updateMainGo updates the main.go file to include the new routes
 func updateMainGo() error {
-	mainGoPath := "src/main.go" // Path to your main.go file
+			// Get the current working directory
+	currentDir, _ := os.Getwd()
+
+	
+	mainGoPath := filepath.Join(currentDir,"main.go")
 	importPath := fmt.Sprintf("\"%s/%sroutes\"", getModuleName(), rootPath)
 	routeSetup := fmt.Sprintf("routes.Setup%sRoutes(app, repo)", resourceName)
 
@@ -198,8 +244,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"%s/modules/repository"
-	"%s/modules/routes"
+	"%s/src/modules/repository"
+	"%s/src/modules/routes"
 )
 
 func main() {
@@ -239,7 +285,7 @@ func main() {
 		`"log"`,
 		`"go.mongodb.org/mongo-driver/mongo"`,
 		`"go.mongodb.org/mongo-driver/mongo/options"`,
-		fmt.Sprintf(`"%s/modules/repository"`, getModuleName()),
+		fmt.Sprintf(`"%s/src/modules/repository"`, getModuleName()),
 		importPath,
 	}
 
@@ -272,16 +318,16 @@ func main() {
 	mongoCode := ""
 	if mongoIndex == -1 {
 		mongoCode = `
-	// Connect to MongoDB
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
-	if err != nil {
-		log.Fatal("Failed to connect to MongoDB:", err)
-	}
-	db := client.Database("go_db")
+// Connect to MongoDB
+client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+if err != nil {
+	log.Fatal("Failed to connect to MongoDB:", err)
+}
+db := client.Database("go_db")
 
-	// Initialize repository
-	repo := repository.NewRepository(db)
-	`
+// Initialize repository
+repo := repository.NewRepository(db)
+`
 	}
 
 	// Insert the MongoDB connection and repository initialization code
