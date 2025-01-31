@@ -1,3 +1,12 @@
-./pkg*
-go.mod
-./go.sum
+# Ignore everything by default
+*
+
+# Allow the compiled binary (Replace 'mybinary' with your actual binary name)
+!crud
+
+# Allow .gitignore itself so it remains in the repository
+!.gitignore
+
+# If using Go modules, you may want to allow go.mod and go.sum
+# !go.mod
+# !go.sum
