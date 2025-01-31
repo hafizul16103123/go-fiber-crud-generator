@@ -58,7 +58,7 @@ func getModuleName() string {
 	// }
 	// return ""
 
-	return "go-crud"
+	return "github.com/hafizul16103123/go-fiber-crud-generator"
 }
 
 func generateModel() {
