@@ -2,9 +2,9 @@ package routes
 
 import (
     "github.com/gofiber/fiber/v2"
-    "{{.BaseModuleName}}/modules/controllers"
-    "{{.BaseModuleName}}/modules/repository"
-    "{{.BaseModuleName}}/modules/services"
+    "{{.BaseModuleName}}/src/modules/controllers"
+    "{{.BaseModuleName}}/src/modules/repository"
+    "{{.BaseModuleName}}/src/modules/services"
 )
 
 func Setup{{.ResourceName}}Routes(app *fiber.App, repo *repository.Repository) {

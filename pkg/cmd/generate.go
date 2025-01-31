@@ -18,6 +18,9 @@ func init() {
 	generateCmd.Flags().StringVarP(&resourceName, "name", "n", "", "Name of the resource (required)")
 	generateCmd.MarkFlagRequired("name")
 	rootCmd.AddCommand(generateCmd)
+
+	// Add the new "init" command
+	rootCmd.AddCommand(initCmd)
 }
 
 var generateCmd = &cobra.Command{
@@ -52,12 +55,76 @@ var generateCmd = &cobra.Command{
 	},
 }
 
-func getModuleName() string {
-	// if info, ok := debug.ReadBuildInfo(); ok {
-	//     return info.Main.Path // Returns the module name from go.mod
-	// }
-	// return ""
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize a simple Fiber app with MongoDB connection",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Create the src directory
+		if err := os.MkdirAll("src", os.ModePerm); err != nil {
+			fmt.Println("Error creating src directory:", err)
+			return
+		}
 
+		// Create the main.go file
+		if err := createMainGo(); err != nil {
+			fmt.Println("Error creating main.go:", err)
+			return
+		}
+
+		fmt.Println("Simple Fiber app with MongoDB connection created successfully!")
+	},
+}
+
+func createMainGo() error {
+	mainGoPath := "src/main.go" // Path to your main.go file
+
+	// Default main.go template
+	defaultMainGo := `package main
+
+import (
+	"context"
+	"log"
+	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+func main() {
+	app := fiber.New()
+
+	// Connect to MongoDB
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
+	}
+	db := client.Database("go_db")
+
+	// Ping the MongoDB server to verify the connection
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatal("Failed to ping MongoDB:", err)
+	}
+	log.Println("Connected to MongoDB!")
+
+	// Simple route for testing
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, Fiber with MongoDB!")
+	})
+
+	app.Listen(":3000")
+}
+`
+
+	// Write the default main.go file
+	if err := os.WriteFile(mainGoPath, []byte(defaultMainGo), 0644); err != nil {
+		return fmt.Errorf("failed to create main.go: %v", err)
+	}
+
+	return nil
+}
+
+func getModuleName() string {
+	// Replace with your actual module name or logic to fetch it
 	return "github.com/hafizul16103123/go-fiber-crud-generator"
 }
 
@@ -118,8 +185,44 @@ func generateRoutes() {
 // updateMainGo updates the main.go file to include the new routes
 func updateMainGo() error {
 	mainGoPath := "src/main.go" // Path to your main.go file
-	importPath := fmt.Sprintf("\"go-crud/%sroutes\"", "modules/")
+	importPath := fmt.Sprintf("\"%s/%sroutes\"", getModuleName(), rootPath)
 	routeSetup := fmt.Sprintf("routes.Setup%sRoutes(app, repo)", resourceName)
+
+	// Check if main.go exists, if not, create it with a default template
+	if _, err := os.Stat(mainGoPath); os.IsNotExist(err) {
+		defaultMainGo := `package main
+
+import (
+	"context"
+	"log"
+	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"%s/modules/repository"
+	"%s/modules/routes"
+)
+
+func main() {
+	app := fiber.New()
+
+	// Connect to MongoDB
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
+	}
+	db := client.Database("go_db")
+
+	// Initialize repository
+	repo := repository.NewRepository(db)
+
+	app.Listen(":3000")
+}
+`
+		defaultMainGo = fmt.Sprintf(defaultMainGo, getModuleName(), getModuleName())
+		if err := os.WriteFile(mainGoPath, []byte(defaultMainGo), 0644); err != nil {
+			return fmt.Errorf("failed to create main.go: %v", err)
+		}
+	}
 
 	// Read the main.go file
 	content, err := os.ReadFile(mainGoPath)
@@ -136,7 +239,7 @@ func updateMainGo() error {
 		`"log"`,
 		`"go.mongodb.org/mongo-driver/mongo"`,
 		`"go.mongodb.org/mongo-driver/mongo/options"`,
-		`"go-crud/modules/repository"`,
+		fmt.Sprintf(`"%s/modules/repository"`, getModuleName()),
 		importPath,
 	}
 
@@ -166,20 +269,19 @@ func updateMainGo() error {
 
 	// MongoDB connection and repository initialization code
 	mongoIndex := strings.Index(fileContent, "// Connect to MongoDB")
-	fmt.Println("mongoIndex:", mongoIndex)
 	mongoCode := ""
 	if mongoIndex == -1 {
 		mongoCode = `
-		// Connect to MongoDB
-		client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
-		if err != nil {
-			log.Fatal("Failed to connect to MongoDB:", err)
-		}
-		db := client.Database("go_db")
-	
-		// Initialize repository
-		repo := repository.NewRepository(db)
-		`
+	// Connect to MongoDB
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
+	}
+	db := client.Database("go_db")
+
+	// Initialize repository
+	repo := repository.NewRepository(db)
+	`
 	}
 
 	// Insert the MongoDB connection and repository initialization code
